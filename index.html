@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AccessAble - campus routes that work for you</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EDF1EE;
+    --panel: #FFFFFF;
+    --ink: #12261F;
+    --muted: #51655B;
+    --line: #C7D3CB;
+    --route: #00806B;
+    --std: #5B6B8C;
+    --bad: #D1342B;
+    --warn: #FFE08A;
+    --ok-bg: #D9F1E9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Lexend", system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.5; }
+  :focus-visible { outline: 4px solid #F2A900; outline-offset: 2px; }
+  header { max-width: 1200px; margin: 0 auto; padding: 1.25rem 1.25rem .25rem; }
+  h1 { margin: 0; font-size: 1.8rem; letter-spacing: -0.02em; }
+  header p { margin: .2rem 0 0; color: var(--muted); max-width: 70ch; }
+  .layout { max-width: 1200px; margin: 0 auto; padding: 1rem 1.25rem 3rem; display: grid; grid-template-columns: 360px 1fr; gap: 1.25rem; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 1rem 1.1rem; margin-bottom: 1.25rem; }
+  h2 { font-size: 1.05rem; margin: 0 0 .6rem; }
+  label { display: block; font-weight: 600; font-size: .9rem; margin: .6rem 0 .2rem; }
+  select, input[type=text] { width: 100%; font: inherit; padding: .55rem .6rem; border: 2px solid var(--ink); border-radius: 10px; background: #fff; color: var(--ink); }
+  .profiles { display: grid; gap: .5rem; }
+  .profile { text-align: left; font: inherit; padding: .65rem .8rem; border: 2px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; color: var(--ink); }
+  .profile b { display: block; font-size: .98rem; }
+  .profile span { font-size: .84rem; color: var(--muted); }
+  .profile[aria-pressed="true"] { border-color: var(--route); background: var(--ok-bg); }
+  button.btn { font: inherit; font-weight: 600; padding: .6rem 1rem; border-radius: 10px; border: 2px solid var(--ink); background: #fff; color: var(--ink); cursor: pointer; }
+  button.btn.primary { background: var(--bad); color: #fff; border-color: var(--bad); }
+  button.btn.small { padding: .3rem .7rem; font-size: .85rem; }
+  .banner { padding: .7rem .9rem; border-radius: 10px; background: var(--warn); font-weight: 600; margin-bottom: 1rem; }
+  .summary { font-size: 1.15rem; font-weight: 700; }
+  .summary.none { color: var(--bad); }
+  .note { color: var(--muted); font-size: .9rem; }
+  .compare { margin-top: .8rem; padding: .7rem .8rem; border-left: 5px solid var(--std); background: #EEF0F6; border-radius: 6px; font-size: .92rem; }
+  .compare b { color: var(--bad); }
+  ol.steps { margin: .6rem 0 0; padding-left: 1.3rem; }
+  ol.steps li { margin-bottom: .35rem; }
+  .map-wrap { background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: .5rem; margin-bottom: 1.25rem; }
+  svg { width: 100%; height: auto; display: block; border-radius: 10px; background: #DDE8DF; }
+  .legend { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; padding: .6rem .5rem .2rem; font-size: .85rem; color: var(--muted); }
+  .legend i { display: inline-block; width: 26px; height: 0; border-top: 6px solid; vertical-align: middle; margin-right: .35rem; }
+  .fac { display: flex; justify-content: space-between; gap: .75rem; align-items: center; padding: .6rem 0; border-top: 1px solid var(--line); }
+  .fac:first-of-type { border-top: 0; }
+  .badge { display: inline-block; padding: .1rem .55rem; border-radius: 99px; font-size: .8rem; font-weight: 700; }
+  .badge.ok { background: var(--ok-bg); color: #05503F; }
+  .badge.broken { background: #FBD9D6; color: #8A1710; }
+  .log { margin: 0; padding: 0; list-style: none; font-size: .9rem; max-height: 180px; overflow-y: auto; }
+  .log li { padding: .35rem 0; border-top: 1px solid var(--line); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AccessAble</h1>
+  <p>Reaching a destination isn't the same as being able to access it. Pick how you move, and get a route that avoids what you can't use, updated by the community.</p>
+</header>
+
+<div class="layout">
+  <!-- LEFT: plan + results -->
+  <aside>
+    <section class="card">
+      <h2>1. How do you get around?</h2>
+      <div class="profiles" id="profiles"></div>
+    </section>
+
+    <section class="card">
+      <h2>2. Where are you going?</h2>
+      <label for="from">From</label>
+      <select id="from"></select>
+      <label for="to">To</label>
+      <select id="to"></select>
+    </section>
+
+    <section class="card" aria-live="polite">
+      <div class="banner" id="banner" hidden></div>
+      <h2>Your route</h2>
+      <div class="summary" id="summary"></div>
+      <div id="compare"></div>
+      <ol class="steps" id="steps"></ol>
+    </section>
+  </aside>
+
+  <!-- RIGHT: map + facilities + reports -->
+  <main>
+    <div class="map-wrap">
+      <svg id="map" viewBox="0 0 800 520" role="img" aria-label="Campus map showing your accessible route. A text version is in the Your route list."></svg>
+      <div class="legend">
+        <span><i style="border-color:#00806B"></i>Your accessible route</span>
+        <span><i style="border-color:#5B6B8C;border-top-style:dashed"></i>What standard navigation would pick</span>
+        <span><i style="border-color:#D1342B;border-top-style:dashed"></i>Reported not working</span>
+        <span>L = lift, R = ramp</span>
+      </div>
+    </div>
+
+    <section class="card">
+      <h2>Facilities on campus</h2>
+      <div id="facilities"></div>
+    </section>
+
+    <section class="card">
+      <h2>Report a barrier</h2>
+      <p class="note">Found a broken lift or a blocked ramp? Reporting it updates every student's route straight away.</p>
+      <div class="row">
+        <div>
+          <label for="repFac">What's affected?</label>
+          <select id="repFac"></select>
+        </div>
+        <div>
+          <label for="repNote">What happened? (optional)</label>
+          <input type="text" id="repNote" placeholder="e.g. Out of order sign on door">
+        </div>
+      </div>
+      <p><button class="btn primary" id="repBtn">Report as not working</button>
+         <button class="btn" id="resetBtn">Reset demo</button></p>
+      <h2 style="margin-top:1rem">Recent reports</h2>
+      <ul class="log" id="log"></ul>
+    </section>
+  </main>
+</div>
+
+<script>
+/* =====================================================
+   1. CAMPUS DATA  -  EDIT THIS SECTION FOR YOUR OWN CAMPUS
+   ===================================================== */
+const NODES = {
+  gate:      { name: "Main Gate",                  x: 60,  y: 460, place: true },
+  admin:     { name: "Admin Office",               x: 100, y: 250, place: true },
+  quad:      { name: "Central Quad",               x: 330, y: 320, place: false },
+  lib:       { name: "Library",                    x: 340, y: 100, place: true },
+  sci_front: { name: "Science Block front door",   x: 540, y: 200, place: false },
+  sci_side:  { name: "Science Block side door",    x: 690, y: 310, place: false },
+  sci_g:     { name: "Science Block ground floor", x: 615, y: 245, place: true },
+  lab:       { name: "Lab 201 (2nd floor)",        x: 700, y: 190, place: true },
+  cafe:      { name: "Cafeteria",                  x: 520, y: 450, place: true },
+  hostel:    { name: "Hostel",                     x: 710, y: 440, place: true }
+};
+
+const BUILDINGS = [
+  { name: "Library",       x: 290, y: 55,  w: 100, h: 70 },
+  { name: "Admin",         x: 40,  y: 215, w: 90,  h: 70 },
+  { name: "Science Block", x: 540, y: 160, w: 200, h: 150 },
+  { name: "Cafeteria",     x: 480, y: 420, w: 90,  h: 60 },
+  { name: "Hostel",        x: 670, y: 410, w: 90,  h: 60 }
+];
+
+// Lifts and ramps that can break. type: lift | ramp
+const FACILITIES = {
+  sci_lift:       { name: "Science Block lift",        type: "lift" },
+  sci_front_ramp: { name: "Science Block front ramp",  type: "ramp" },
+  sci_side_ramp:  { name: "Science Block side ramp",   type: "ramp" },
+  lib_ramp:       { name: "Library ramp",              type: "ramp" }
+};
+
+// Every way to get between two points.
+// type: path | stairs | ramp | lift   len: metres   steps: number of steps
+// steep: hard slope   tactile: has tactile paving/guidance   fac: linked facility
+// bend: how much the line curves on the map (pixels)
+const EDGES = [
+  { id: "e1",  a: "gate",      b: "quad",      type: "path",   name: "Main road",           len: 260, tactile: true,  bend: 0 },
+  { id: "e2",  a: "gate",      b: "admin",     type: "path",   name: "Admin road",          len: 140, tactile: false, bend: 0 },
+  { id: "e3",  a: "admin",     b: "quad",      type: "path",   name: "Garden path",         len: 190, steep: true, tactile: false, bend: -20 },
+  { id: "e4",  a: "quad",      b: "lib",       type: "stairs", name: "Library front steps", len: 70,  steps: 6, bend: 25 },
+  { id: "e5",  a: "quad",      b: "lib",       type: "ramp",   name: "Library ramp",        len: 110, tactile: true, fac: "lib_ramp", bend: -25 },
+  { id: "e6",  a: "quad",      b: "sci_front", type: "path",   name: "Science walkway",     len: 230, tactile: true,  bend: 0 },
+  { id: "e7",  a: "sci_front", b: "sci_g",     type: "stairs", name: "Front steps",         len: 15,  steps: 4, bend: -18 },
+  { id: "e8",  a: "sci_front", b: "sci_g",     type: "ramp",   name: "Front ramp",          len: 55,  tactile: true, fac: "sci_front_ramp", bend: 22 },
+  { id: "e9",  a: "quad",      b: "sci_side",  type: "path",   name: "Garden loop",         len: 330, tactile: false, bend: 55 },
+  { id: "e10", a: "sci_side",  b: "sci_g",     type: "ramp",   name: "Side ramp",           len: 45,  tactile: false, fac: "sci_side_ramp", bend: 0 },
+  { id: "e11", a: "sci_g",     b: "lab",       type: "lift",   name: "Science Block lift",  len: 20,  tactile: true, fac: "sci_lift", bend: 20 },
+  { id: "e12", a: "sci_g",     b: "lab",       type: "stairs", name: "Stairwell",           len: 18,  steps: 28, bend: -20 },
+  { id: "e13", a: "quad",      b: "cafe",      type: "path",   name: "Cafe road",           len: 240, tactile: true,  bend: 0 },
+  { id: "e14", a: "gate",      b: "cafe",      type: "path",   name: "Service road",        len: 420, tactile: false, bend: 15 },
+  { id: "e15", a: "cafe",      b: "hostel",    type: "path",   name: "Hostel road",         len: 190, tactile: true,  bend: 0 },
+  { id: "e16", a: "sci_side",  b: "hostel",    type: "path",   name: "Hill path",           len: 170, steep: true, tactile: false, bend: 0 },
+  { id: "e17", a: "lib",       b: "sci_front", type: "path",   name: "North walkway",       len: 250, tactile: false, bend: 0 }
+];
+
+// What each type of user can and cannot use.
+const PROFILES = {
+  wheelchair: { label: "Wheelchair user", desc: "No steps, no steep slopes. Needs working ramps and lifts.",
+                maxSteps: 0, allowSteep: false, steepMult: 1, stepCost: 0, needsTactile: false, speed: 1.1 },
+  walking:    { label: "Crutches or low stamina", desc: "Short flights of steps are OK (up to 5). Avoids long stairs and steep slopes.",
+                maxSteps: 5, allowSteep: true, steepMult: 1.6, stepCost: 6, needsTactile: false, speed: 0.7 },
+  lowvision:  { label: "Low vision or blind", desc: "Prefers paths with tactile guidance. Stairs are OK but avoided when possible.",
+                maxSteps: 999, allowSteep: true, steepMult: 1, stepCost: 3, needsTactile: true, speed: 0.9 }
+};
+
+/* =====================================================
+   2. STATE (saved in the browser so reports persist)
+   ===================================================== */
+const STORE_KEY = "accessable_v1";
+function freshState() {
+  const facil = {};
+  Object.keys(FACILITIES).forEach(id => facil[id] = { status: "ok", reports: 0 });
+  return { facil, log: [], profile: "wheelchair", from: "gate", to: "lab" };
+}
+let state = freshState();
+try {
+  const saved = localStorage.getItem(STORE_KEY);
+  if (saved) state = Object.assign(freshState(), JSON.parse(saved));
+} catch (e) { /* storage unavailable, continue in memory */ }
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {} }
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+/* =====================================================
+   3. ROUTING ENGINE  (Dijkstra's shortest path with rules)
+   ===================================================== */
+function isBroken(edge) { return edge.fac && state.facil[edge.fac].status === "broken"; }
+
+// Why a given edge can't be used by a profile (or null if usable)
+function blockReason(edge, p, ignoreBroken) {
+  if (!ignoreBroken && isBroken(edge)) return edge.name + " is reported not working";
+  if ((edge.steps || 0) > p.maxSteps) return edge.name + " has " + edge.steps + " steps";
+  if (edge.steep && !p.allowSteep) return edge.name + " is steep";
+  return null;
+}
+
+function edgeCost(edge, p) {
+  let c = edge.len;
+  if (edge.steep) c *= p.steepMult;
+  if (p.needsTactile && !edge.tactile) c *= 1.8;
+  c += (edge.steps || 0) * p.stepCost;
+  return c;
+}
+
+function dijkstra(src, dst, costFn) {
+  const dist = {}, prev = {}, done = {};
+  Object.keys(NODES).forEach(n => dist[n] = Infinity);
+  dist[src] = 0;
+  while (true) {
+    let u = null;
+    for (const n in dist) if (!done[n] && (u === null || dist[n] < dist[u])) u = n;
+    if (u === null || dist[u] === Infinity) break;
+    if (u === dst) break;
+    done[u] = true;
+    for (const e of EDGES) {
+      let v = null;
+      if (e.a === u) v = e.b; else if (e.b === u) v = e.a; else continue;
+      const c = costFn(e);
+      if (c === Infinity) continue;
+      if (dist[u] + c < dist[v]) { dist[v] = dist[u] + c; prev[v] = { edge: e, from: u }; }
+    }
+  }
+  if (dist[dst] === Infinity) return null;
+  const path = [];
+  let cur = dst;
+  while (cur !== src) { const p = prev[cur]; path.unshift({ edge: p.edge, from: p.from, to: cur }); cur = p.from; }
+  return path;
+}
+
+function accessibleRoute(src, dst, p, ignoreBroken) {
+  return dijkstra(src, dst, e => blockReason(e, p, ignoreBroken) ? Infinity : edgeCost(e, p));
+}
+function standardRoute(src, dst) { return dijkstra(src, dst, e => e.len); }
+
+function stats(path, p) {
+  let m = 0, sec = 0, steps = 0;
+  path.forEach(s => {
+    m += s.edge.len; steps += s.edge.steps || 0;
+    sec += s.edge.len / p.speed + (s.edge.steps || 0) * 2 + (s.edge.type === "lift" ? 40 : 0);
+  });
+  return { m, min: Math.max(1, Math.round(sec / 60)), steps };
+}
+const sig = path => path ? path.map(s => s.edge.id).join(",") : "none";
+
+/* =====================================================
+   4. DRAWING
+   ===================================================== */
+function geom(e) {
+  const A = NODES[e.a], B = NODES[e.b];
+  const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+  const dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1;
+  const cx = mx + (-dy / L) * e.bend * 2, cy = my + (dx / L) * e.bend * 2;
+  return { d: `M${A.x} ${A.y} Q${cx} ${cy} ${B.x} ${B.y}`,
+           mid: { x: .25 * A.x + .5 * cx + .25 * B.x, y: .25 * A.y + .5 * cy + .25 * B.y } };
+}
+
+function drawMap(accPath, stdPath) {
+  let s = "";
+  BUILDINGS.forEach(b => {
+    s += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="8" fill="#FFFFFF" stroke="#8FA396" stroke-width="2"/>`;
+    s += `<text x="${b.x + 8}" y="${b.y + 16}" font-size="12" fill="#51655B" font-weight="600">${b.name}</text>`;
+  });
+  // base edges
+  EDGES.forEach(e => {
+    const g = geom(e);
+    let stroke = "#B9C7BE", w = 7, dash = "";
+    if (e.type === "stairs") { stroke = "#12261F"; w = 5; dash = "3 4"; }
+    if (e.type === "ramp" || e.type === "lift") { stroke = "#7FB5A4"; w = 6; }
+    if (isBroken(e)) { stroke = "#D1342B"; dash = "8 6"; }
+    s += `<path d="${g.d}" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" ${dash ? `stroke-dasharray="${dash}"` : ""}/>`;
+  });
+  // standard route
+  if (stdPath) stdPath.forEach(st => {
+    s += `<path d="${geom(st.edge).d}" fill="none" stroke="#5B6B8C" stroke-width="4" stroke-dasharray="10 8" stroke-linecap="round"/>`;
+  });
+  // accessible route
+  if (accPath) accPath.forEach(st => {
+    s += `<path d="${geom(st.edge).d}" fill="none" stroke="#00806B" stroke-width="9" stroke-linecap="round" opacity=".92"/>`;
+  });
+  // edge markers
+  EDGES.forEach(e => {
+    const m = geom(e).mid;
+    if (e.type === "stairs") {
+      s += `<text x="${m.x}" y="${m.y + 4}" font-size="11" text-anchor="middle" fill="#12261F" font-weight="700" stroke="#fff" stroke-width="3" paint-order="stroke">${e.steps} steps</text>`;
+    }
+    if (e.fac) {
+      const broken = isBroken(e);
+      s += `<circle cx="${m.x}" cy="${m.y}" r="12" fill="${broken ? "#D1342B" : "#00806B"}" stroke="#fff" stroke-width="2.5"/>`;
+      s += `<text x="${m.x}" y="${m.y + 4.5}" font-size="13" text-anchor="middle" fill="#fff" font-weight="700">${broken ? "×" : (e.type === "lift" ? "L" : "R")}</text>`;
+    }
+  });
+  // nodes
+  Object.keys(NODES).forEach(id => {
+    const n = NODES[id];
+    const isEnd = id === state.from || id === state.to;
+    s += `<circle cx="${n.x}" cy="${n.y}" r="${n.place ? 8 : 5}" fill="${isEnd ? "#F2A900" : (n.place ? "#12261F" : "#fff")}" stroke="#12261F" stroke-width="2.5"/>`;
+    if (n.place || id === "quad") {
+      s += `<text x="${n.x + 12}" y="${n.y + 4}" font-size="12.5" font-weight="700" fill="#12261F" stroke="#fff" stroke-width="3.5" paint-order="stroke">${n.name}</text>`;
+    }
+  });
+  $("map").innerHTML = s;
+}
+
+/* =====================================================
+   5. UI
+   ===================================================== */
+function describe(step) {
+  const e = step.edge, to = NODES[step.to].name;
+  if (e.type === "path")   return `Follow <b>${esc(e.name)}</b> to ${esc(to)} (${e.len} m)`;
+  if (e.type === "stairs") return `Take <b>${esc(e.name)}</b> (${e.steps} steps) to ${esc(to)}`;
+  if (e.type === "ramp")   return `Use the <b>${esc(e.name)}</b> to ${esc(to)} (${e.len} m)`;
+  return `Take the <b>${esc(e.name)}</b> to ${esc(to)}`;
+}
+
+let lastSig = null;
+function render(actionText) {
+  const p = PROFILES[state.profile];
+  const acc = accessibleRoute(state.from, state.to, p, false);
+  const std = standardRoute(state.from, state.to);
+
+  // Profile buttons
+  $("profiles").innerHTML = "";
+  Object.keys(PROFILES).forEach(id => {
+    const b = document.createElement("button");
+    b.className = "profile";
+    b.setAttribute("aria-pressed", id === state.profile);
+    b.innerHTML = `<b>${PROFILES[id].label}</b><span>${PROFILES[id].desc}</span>`;
+    b.onclick = () => { state.profile = id; save(); render(); };
+    $("profiles").appendChild(b);
+  });
+
+  // Banner: explain changes caused by a report
+  const newSig = sig(acc);
+  const banner = $("banner");
+  if (actionText) {
+    banner.hidden = false;
+    banner.textContent = actionText + (lastSig !== null && lastSig !== newSig ? " Your route was updated." : " Your current route is not affected.");
+  } else if (lastSig === null) { banner.hidden = true; }
+  lastSig = newSig;
+
+  const summary = $("summary"), steps = $("steps"), compare = $("compare");
+  steps.innerHTML = ""; compare.innerHTML = "";
+
+  if (state.from === state.to) {
+    summary.className = "summary"; summary.textContent = "You're already there.";
+  } else if (acc) {
+    const st = stats(acc, p);
+    summary.className = "summary";
+    summary.textContent = `${st.m} m, about ${st.min} min`;
+    acc.forEach(s => { const li = document.createElement("li"); li.innerHTML = describe(s); steps.appendChild(li); });
+
+    // Compare with what a normal map app would do
+    if (std && sig(std) !== newSig) {
+      const problems = std.map(s => blockReason(s.edge, p, false)).filter(Boolean);
+      const ss = stats(std, p);
+      compare.innerHTML = `<div class="compare">Standard navigation would send you ${ss.m} m via ${std.filter(s => s.edge.type !== "path").map(s => esc(s.edge.name)).join(" and ") || "the shortest roads"}. <b>That route doesn't work for you:</b> ${problems.map(esc).join("; ")}.</div>`;
+    }
+  } else {
+    summary.className = "summary none";
+    summary.textContent = "No accessible route right now.";
+    const ideal = accessibleRoute(state.from, state.to, p, true);
+    const li = document.createElement("li");
+    if (ideal) {
+      const blocked = ideal.filter(s => isBroken(s.edge)).map(s => s.edge.name);
+      li.innerHTML = `Your usual accessible route needs: <b>${blocked.map(esc).join(", ")}</b>, which ${blocked.length > 1 ? "are" : "is"} reported not working.`;
+      steps.appendChild(li);
+      const li2 = document.createElement("li");
+      li2.textContent = "Suggested next steps: contact the department office to move the class or activity to an accessible room, and ask facilities to repair it.";
+      steps.appendChild(li2);
+    } else {
+      li.textContent = "This destination has no accessible route on the map for this mobility profile.";
+      steps.appendChild(li);
+    }
+  }
+
+  drawMap(acc, std);
+
+  // Facilities list
+  $("facilities").innerHTML = "";
+  Object.keys(FACILITIES).forEach(id => {
+    const f = FACILITIES[id], s = state.facil[id];
+    const row = document.createElement("div");
+    row.className = "fac";
+    row.innerHTML = `<div><b>${esc(f.name)}</b><br><span class="badge ${s.status}">${s.status === "ok" ? "Working" : "Reported not working"}</span> <span class="note">${s.reports} report${s.reports === 1 ? "" : "s"} so far</span></div>`;
+    if (s.status === "broken") {
+      const b = document.createElement("button");
+      b.className = "btn small"; b.textContent = "Mark as working";
+      b.onclick = () => fix(id);
+      row.appendChild(b);
+    }
+    $("facilities").appendChild(row);
+  });
+
+  // Report log
+  $("log").innerHTML = state.log.length
+    ? state.log.slice().reverse().map(l => `<li><b>${esc(l.name)}</b>: ${esc(l.text)} <span class="note">(${esc(l.time)})</span></li>`).join("")
+    : `<li class="note">No reports yet. Try reporting the Science Block lift.</li>`;
+}
+
+function populateSelects() {
+  const placeIds = Object.keys(NODES).filter(id => NODES[id].place);
+  ["from", "to"].forEach(sel => {
+    $(sel).innerHTML = placeIds.map(id => `<option value="${id}">${esc(NODES[id].name)}</option>`).join("");
+    $(sel).value = state[sel];
+    $(sel).onchange = e => { state[sel] = e.target.value; save(); render(); };
+  });
+  $("repFac").innerHTML = Object.keys(FACILITIES).map(id => `<option value="${id}">${esc(FACILITIES[id].name)}</option>`).join("");
+}
+
+function nowTime() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+
+$("repBtn").onclick = () => {
+  const id = $("repFac").value, note = $("repNote").value.trim();
+  const f = state.facil[id];
+  f.reports += 1; f.status = "broken";
+  state.log.push({ name: FACILITIES[id].name, text: note || "Reported not working", time: nowTime() });
+  $("repNote").value = "";
+  save();
+  render(FACILITIES[id].name + " was reported not working.");
+};
+
+function fix(id) {
+  state.facil[id].status = "ok";
+  state.log.push({ name: FACILITIES[id].name, text: "Marked as working again", time: nowTime() });
+  save();
+  render(FACILITIES[id].name + " is working again.");
+}
+
+$("resetBtn").onclick = () => {
+  const keep = { profile: state.profile, from: state.from, to: state.to };
+  state = Object.assign(freshState(), keep);
+  lastSig = null; save(); render();
+  $("banner").hidden = true;
+};
+
+populateSelects();
+render();
+</script>
+</body>
+</html>
